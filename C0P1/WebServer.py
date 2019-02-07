@@ -96,7 +96,7 @@ class SimpleWebServer:
                 http_header.append('Content-Type: image/' + filename_extension[1:])
 
                 for line in http_header:
-                    conn.sendall(line + '\n', 'utf-8')
+                    conn.sendall(str.encode(line + '\n'), 'utf-8')
 
                 # Send the HTTP response body
                 for i in range(0, len(msg), self.BUFFER_SIZE):
