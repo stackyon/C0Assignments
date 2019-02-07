@@ -82,17 +82,21 @@ class SimpleWebServer:
                 msg = f.read()
 
                 # Send the HTTP response headers to the connection socket
+                http_header = []
                 # 1. HTTP version and status code
-                conn.send(b'HTTP/1.1 200 OK')
+                http_header.append('HTTP/1.1 200 OK')
 
                 # 2. Keep-Alive field
-                conn.send(b'Connection: keep - alive')
+                http_header.append('Connection: keep - alive')
 
                 # 3. Content length field
-                conn.send(b'Content-Length: ' + len(msg))
+                http_header.append('Content-Length: ' + str(len(msg)))
 
                 # 4. Content type field (based on the file type)
-                conn.send(b'Content-Type: image/' + filename_extension[1:])
+                http_header.append('Content-Type: image/' + filename_extension[1:])
+
+                for line in http_header:
+                    conn.sendall(line + '\n', 'utf-8')
 
                 # Send the HTTP response body
                 for i in range(0, len(msg), self.BUFFER_SIZE):
