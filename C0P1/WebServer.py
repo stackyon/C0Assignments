@@ -6,6 +6,7 @@ import threading
 import time
 import optparse
 import os
+import codecs
 
 __author__ = "Rong Zheng"
 __copyright__ = "Copyright 2019, McMaster University"
@@ -75,8 +76,7 @@ class SimpleWebServer:
                 # Open the local file f specified in filename for reading
                 # Because the extracted path of the HTTP request includes
                 # a character '\', we read the path from the second character
-                # f = open(filename[1:])
-                f = open('index.html')
+                f = codecs.open(filename[1:], encoding='utf-8', errors='ignore')
 
                 # Store the entire content of the requested file in a temporary buffer
                 msg = f.read()
@@ -93,21 +93,26 @@ class SimpleWebServer:
                 http_header.append('Content-Length: ' + str(len(msg)))
 
                 # 4. Content type field (based on the file type)
-                http_header.append('Content-Type: image/' + filename_extension[1:])
+                if filename_extension == '.jpg':
+                    http_header.append('Content-Type: image/jpeg')
+                elif filename_extension == '.html':
+                    http_header.append('Content-Type: text/html')
+                else:
+                    http_header.append('Content-Type: text/plain')
 
                 for line in http_header:
-                    conn.sendall(str.encode(line + '\n'), 'utf-8')
+                    conn.sendall(line.encode('utf-8'))
 
                 # Send the HTTP response body
                 for i in range(0, len(msg), self.BUFFER_SIZE):
                     end = min(i + self.BUFFER_SIZE, len(msg))
-                    conn.send(msg[i: end])
+                    conn.send(msg[i: end].encode('utf-8', 'ignore'))
 
             # Exception handling
             except FileNotFoundError:
                 # Send HTTP response message for file not found
-                conn.send('HTTP/1.1 404 Not Found')
-                conn.send(ErrorMsg404)
+                conn.send('HTTP/1.1 404 Not Found'.encode('utf-8'))
+                conn.send(ErrorMsg404.encode('utf-8'))
                 # YOUR CODE  1 - 3 lines
 
             except socket.timeout:
