@@ -76,7 +76,7 @@ class SimpleWebServer:
                 # Open the local file f specified in filename for reading
                 # Because the extracted path of the HTTP request includes
                 # a character '\', we read the path from the second character
-                f = codecs.open(filename[1:], encoding='utf-8', errors='ignore')
+                f = open(filename[1:], 'rb')
 
                 # Store the entire content of the requested file in a temporary buffer
                 msg = f.read()
@@ -84,21 +84,21 @@ class SimpleWebServer:
                 # Send the HTTP response headers to the connection socket
                 http_header = []
                 # 1. HTTP version and status code
-                http_header.append('HTTP/1.1 200 OK')
+                http_header.append('HTTP/1.1 200 OK\r\n')
 
                 # 2. Keep-Alive field
-                http_header.append('Connection: keep - alive')
+                http_header.append('Keep-Alive: timeout=15, max=200\r\n')
 
                 # 3. Content length field
-                http_header.append('Content-Length: ' + str(len(msg)))
+                http_header.append('Content-Length: ' + str(len(msg)) + '\r\n')
 
                 # 4. Content type field (based on the file type)
                 if filename_extension == '.jpg':
-                    http_header.append('Content-Type: image/jpeg')
+                    http_header.append('Content-Type: image/jpeg\r\n\r\n')
                 elif filename_extension == '.html':
-                    http_header.append('Content-Type: text/html')
+                    http_header.append('Content-Type: text/html\r\n\r\n')
                 else:
-                    http_header.append('Content-Type: text/plain')
+                    http_header.append('Content-Type: text/plain\r\n\r\n')
 
                 for line in http_header:
                     conn.sendall(line.encode('utf-8'))
@@ -106,12 +106,12 @@ class SimpleWebServer:
                 # Send the HTTP response body
                 for i in range(0, len(msg), self.BUFFER_SIZE):
                     end = min(i + self.BUFFER_SIZE, len(msg))
-                    conn.send(msg[i: end].encode('utf-8', 'ignore'))
+                    conn.send(msg[i: end])
 
             # Exception handling
             except FileNotFoundError:
                 # Send HTTP response message for file not found
-                conn.send('HTTP/1.1 404 Not Found'.encode('utf-8'))
+                conn.send('HTTP/1.1 404 Not Found\r\n\r\n'.encode('utf-8'))
                 conn.send(ErrorMsg404.encode('utf-8'))
                 # YOUR CODE  1 - 3 lines
 
