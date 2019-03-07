@@ -55,14 +55,13 @@ class Tracker(threading.Thread):
 
         self.lock = threading.Lock()
         try:
-            #YOUR CODE
-            #Bind to address and port
+            self.server.bind(('127.0.0.1', port))
         except socket.error:
             print(('Bind failed %s' % (socket.error)))
             sys.exit()
 
-        #YOUR CODE
         #listen for connections
+        self.server.listen()
 
     def check_user(self):
         #Check if the peers are alive or not
@@ -89,7 +88,7 @@ class Tracker(threading.Thread):
         print(('Waiting for connections on port %s' % (self.port)))
         while True:
             #accept incoming connection
-            conn, addr = #YOUR CODE
+            conn, addr = self.server.accept()
 
             #process the message from a peer
             threading.Thread(target=self.process_messages, args=(conn, addr)).start()
@@ -109,7 +108,8 @@ class Tracker(threading.Thread):
                     break
 
             # Check if the received data is a json string of the anticipated format. If not, ignore.
-            #YOUR CODE
+            if !(data[0] == '{') 
+            	break
 
             #deserialize
             data_dic = json.loads(data)
