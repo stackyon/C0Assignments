@@ -36,16 +36,17 @@ def validate_port(x):
             return False
     return True
 
+
 class Tracker(threading.Thread):
     def __init__(self, port, host='0.0.0.0'):
         threading.Thread.__init__(self)
-        self.port = port #port used by tracker
-        self.host = host #tracker's IP address
+        self.port = port    # port used by tracker
+        self.host = host    # tracker's IP address
         self.BUFFER_SIZE = 8192
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #socket to accept connections from peers
 
-         # Track (ip, port, exp time) for each peer using a dictionary
-         # You can optionally use (ip,port) as key
+        # Track (ip, port, exp time) for each peer using a dictionary
+        # You can optionally use (ip,port) as key
         self.users = {}
 
         # Track (ip, port, modified time) for each file
@@ -60,11 +61,11 @@ class Tracker(threading.Thread):
             print(('Bind failed %s' % (socket.error)))
             sys.exit()
 
-        #listen for connections
+        # listen for connections
         self.server.listen()
 
     def check_user(self):
-        #Check if the peers are alive or not
+        # Check if the peers are alive or not
         """Steps:
             1. check if a peer has expired or not
             2. if expired, remove items self.users and self.files ()
@@ -72,11 +73,11 @@ class Tracker(threading.Thread):
         """
         #YOUR CODE
 
-        #schedule the method to be called periodically
+        # schedule the method to be called periodically
         t = threading.Timer(20, self.check_user)
         t.start()
 
-   #Ensure sockets are closed on disconnect (This function is Not used)
+    # Ensure sockets are closed on disconnect (This function is Not used)
     def exit(self):
         self.server.close()
 
@@ -87,31 +88,30 @@ class Tracker(threading.Thread):
 
         print(('Waiting for connections on port %s' % (self.port)))
         while True:
-            #accept incoming connection
+            # accept incoming connection
             conn, addr = self.server.accept()
 
-            #process the message from a peer
+            # process the message from a peer
             threading.Thread(target=self.process_messages, args=(conn, addr)).start()
-
 
     def process_messages(self, conn, addr):
         conn.settimeout(180.0)
         print(('Client connected with ' + addr[0] + ':' + str(addr[1])))
 
         while True:
-            #receiving data from a peer
+            # receiving data from a peer
             data = ''
             while True:
                 part = conn.recv(self.BUFFER_SIZE).decode()
-                data =data+ part
+                data = data + part
                 if len(part) < self.BUFFER_SIZE:
                     break
 
             # Check if the received data is a json string of the anticipated format. If not, ignore.
-            if !(data[0] == '{') 
-            	break
+            if not(data.startswith('{')) or not(data.endsswith('}')):
+                break
 
-            #deserialize
+            # deserialize
             data_dic = json.loads(data)
 
             """
@@ -125,8 +125,48 @@ class Tracker(threading.Thread):
                   4. Pay attention to race conditions (Hint: use self.lock)
             """
             #YOUR CODE
+            if data_dic.length == 1:
+                # it's a keepalive
+                for user in self.users:
+                    if user['ip'] == addr:
+                        user['etime'] = 180
+            elif data_dic == 2:
+                # it's an init message
+                # clean out existing version
+                for user in self.users:
+                    if user['ip'] == addr:
+                        self.users.pop(user)
+                # add user
+                new_user = {
+                    'ip': addr,
+                    'port': conn,
+                    'etime': 180
+                }
+                self.users.add(new_user)
+                unknown_file = True
+                for new_file in data['files']:
+                    # format the file to be associated to the peer
+                    # don't accept it as new yet
+                    associated_file = {
+                        'name': new_file['name'],
+                        'ip': addr,
+                        'port': conn,
+                        'mtime': new_file['mtime']
+                    }
+                    for existing_file in self.files:
+                        if existing_file['name'] == new_file['name']:
+                            unknown_file = False
+                            if new_file['mtime'] > existing_file['mtime']:
+                                self.files.pop(existing_file)
+                                self.files.add(associated_file)
+                    if unknown_file:
+                        self.file.add(new_file)
+            else:
+                # ignore the message
+                pass
 
-        conn.close() # Close
+        conn.close()    # Close
+
 
 if __name__ == '__main__':
     parser = optparse.OptionParser(usage="%prog ServerIP ServerPort")
@@ -141,5 +181,5 @@ if __name__ == '__main__':
             server_port = int(args[1])
         else:
             parser.error("Invalid ServerIP or ServerPort")
-    tracker = Tracker(server_port,server_ip)
+    tracker = Tracker(server_port, server_ip)
     tracker.start()
