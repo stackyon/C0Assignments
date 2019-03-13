@@ -20,6 +20,7 @@ def validate_ip(s):
             return False
     return True
 
+
 def validate_port(x):
     """
     Check if the port number is within range
@@ -43,7 +44,7 @@ class Tracker(threading.Thread):
         self.port = port    # port used by tracker
         self.host = host    # tracker's IP address
         self.BUFFER_SIZE = 8192
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) #socket to accept connections from peers
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM) # socket to accept connections from peers
 
         # Track (ip, port, exp time) for each peer using a dictionary
         # You can optionally use (ip,port) as key
@@ -71,7 +72,16 @@ class Tracker(threading.Thread):
             2. if expired, remove items self.users and self.files ()
             [Pay attention to race conditions (Hint: use self.lock)]
         """
-        #YOUR CODE
+        # YOUR CODE
+        self.lock.acquire()
+        for user in self.users:
+            user['etime'] = user['etime'] - 20
+            if user['etime'] <= 0:
+                self.users.pop(user)
+                for file in self.files:
+                    if file['ip'] == user['ip']:
+                        self.files.pop(file)
+        self.lock.release()
 
         # schedule the method to be called periodically
         t = threading.Timer(20, self.check_user)
@@ -124,7 +134,8 @@ class Tracker(threading.Thread):
                   or, update the last modifed time to the most recent one
                   4. Pay attention to race conditions (Hint: use self.lock)
             """
-            #YOUR CODE
+            # YOUR CODE
+            self.lock.acquire()
             if data_dic.length == 1:
                 # it's a keepalive
                 for user in self.users:
@@ -164,7 +175,7 @@ class Tracker(threading.Thread):
             else:
                 # ignore the message
                 pass
-
+        self.lock.release()
         conn.close()    # Close
 
 
