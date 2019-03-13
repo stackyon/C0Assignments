@@ -1,5 +1,6 @@
 import socket, sys, threading, json,time,optparse,os
 
+
 def validate_ip(s):
     """
     Check if an input string is a valid IP address dot decimal format
@@ -48,12 +49,12 @@ class Tracker(threading.Thread):
 
         # Track (ip, port, exp time) for each peer using a dictionary
         # You can optionally use (ip,port) as key
-        self.users = {}
+        self.users = []
 
         # Track (ip, port, modified time) for each file
         # Only the most recent modified time and the respective peer are store
         # {'ip':,'port':,'mtime':}
-        self.files = {}
+        self.files = []
 
         self.lock = threading.Lock()
         try:
@@ -118,7 +119,7 @@ class Tracker(threading.Thread):
                     break
 
             # Check if the received data is a json string of the anticipated format. If not, ignore.
-            if not(data.startswith('{')) or not(data.endsswith('}')):
+            if not(data.startswith('{')) or not(data.endswith('}')):
                 break
 
             # deserialize
@@ -136,16 +137,16 @@ class Tracker(threading.Thread):
             """
             # YOUR CODE
             self.lock.acquire()
-            if data_dic.length == 1:
+            if len(data_dic.items()) == 1:
                 # it's a keepalive
                 for user in self.users:
-                    if user['ip'] == addr:
+                    if user['ip'] == addr and user['port'] == conn:
                         user['etime'] = 180
-            elif data_dic == 2:
+            elif len(data_dic.items()) == 2:
                 # it's an init message
                 # clean out existing version
                 for user in self.users:
-                    if user['ip'] == addr:
+                    if user['ip'] == addr and user['port'] == conn:
                         self.users.pop(user)
                 # add user
                 new_user = {
@@ -153,9 +154,9 @@ class Tracker(threading.Thread):
                     'port': conn,
                     'etime': 180
                 }
-                self.users.add(new_user)
+                self.users.append(new_user)
                 unknown_file = True
-                for new_file in data['files']:
+                for new_file in data_dic['files']:
                     # format the file to be associated to the peer
                     # don't accept it as new yet
                     associated_file = {
@@ -169,14 +170,15 @@ class Tracker(threading.Thread):
                             unknown_file = False
                             if new_file['mtime'] > existing_file['mtime']:
                                 self.files.pop(existing_file)
-                                self.files.add(associated_file)
+                                self.files.append(associated_file)
                     if unknown_file:
-                        self.file.add(new_file)
+                        self.files.append(new_file)
             else:
-                # ignore the message
+                # ignore the message, it's not for the Tracker
                 pass
         self.lock.release()
         conn.close()    # Close
+        print(self.files[0]['name'])
 
 
 if __name__ == '__main__':
