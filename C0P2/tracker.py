@@ -78,10 +78,11 @@ class Tracker(threading.Thread):
         for user in self.users:
             user['etime'] = user['etime'] - 20
             if user['etime'] <= 0:
-                self.users.pop(user)
+                print('user removed!')
+                self.users.remove(user)
                 for file in self.files:
                     if file['ip'] == user['ip']:
-                        self.files.pop(file)
+                        self.files.remove(file)
         self.lock.release()
 
         # schedule the method to be called periodically
@@ -112,11 +113,21 @@ class Tracker(threading.Thread):
         while True:
             # receiving data from a peer
             data = ''
-            while True:
-                part = conn.recv(self.BUFFER_SIZE).decode()
-                data = data + part
-                if len(part) < self.BUFFER_SIZE:
-                    break
+            try:
+                while True:
+                    part = conn.recv(self.BUFFER_SIZE).decode()
+                    data = data + part
+                    if len(part) < self.BUFFER_SIZE:
+                        break
+            except ConnectionResetError:
+                # exit to prevent server crash from closing client
+                print('unexpected disconnection!')
+                break
+            except socket.timeout:
+                # exit to prevent server crash from timed out client
+                # references will be cleaned up by natural timeout
+                print('timeout!')
+                break
 
             # Check if the received data is a json string of the anticipated format. If not, ignore.
             if not(data.startswith('{')) or not(data.endswith('}')):
@@ -138,16 +149,18 @@ class Tracker(threading.Thread):
             # YOUR CODE
             self.lock.acquire()
             if len(data_dic.items()) == 1:
+                print('keepalive message received!')
                 # it's a keepalive
                 for user in self.users:
                     if user['ip'] == addr and user['port'] == conn:
                         user['etime'] = 180
             elif len(data_dic.items()) == 2:
+                print('init message received!')
                 # it's an init message
                 # clean out existing version
                 for user in self.users:
                     if user['ip'] == addr and user['port'] == conn:
-                        self.users.pop(user)
+                        self.users.remove(user)
                 # add user
                 new_user = {
                     'ip': addr,
@@ -169,16 +182,24 @@ class Tracker(threading.Thread):
                         if existing_file['name'] == new_file['name']:
                             unknown_file = False
                             if new_file['mtime'] > existing_file['mtime']:
-                                self.files.pop(existing_file)
+                                self.files.remove(existing_file)
                                 self.files.append(associated_file)
                     if unknown_file:
-                        self.files.append(new_file)
+                        self.files.append(associated_file)
             else:
                 # ignore the message, it's not for the Tracker
                 pass
-        self.lock.release()
-        conn.close()    # Close
-        print(self.files[0]['name'])
+            self.lock.release()
+            for file in self.files:
+                print(file.get('name'))
+                print(str(file.get('mtime')))
+                # remind peers of file info
+                mtime = file.get('mtime')
+                conn.send('{\"' + file.get('name')
+                          + '\": {\"ip\":' + file.get('ip')
+                          + '\"port\":,' + self.port
+                          + '\"mtime\":,' + mtime + '}')
+        conn.close()    # Closes
 
 
 if __name__ == '__main__':
