@@ -152,19 +152,19 @@ class Tracker(threading.Thread):
                 print('keepalive message received!')
                 # it's a keepalive
                 for user in self.users:
-                    if user['ip'] == addr and user['port'] == conn:
+                    if user['ip'] == addr[0] and user['port'] == addr[1]:
                         user['etime'] = 180
             elif len(data_dic.items()) == 2:
                 print('init message received!')
                 # it's an init message
                 # clean out existing version
                 for user in self.users:
-                    if user['ip'] == addr and user['port'] == conn:
+                    if user['ip'] == addr[0] and user['port'] == addr[1]:
                         self.users.remove(user)
                 # add user
                 new_user = {
-                    'ip': addr,
-                    'port': conn,
+                    'ip': addr[0],
+                    'port': addr[1],
                     'etime': 180
                 }
                 self.users.append(new_user)
@@ -174,8 +174,8 @@ class Tracker(threading.Thread):
                     # don't accept it as new yet
                     associated_file = {
                         'name': new_file['name'],
-                        'ip': addr,
-                        'port': conn,
+                        'ip': addr[0],
+                        'port': addr[1],
                         'mtime': new_file['mtime']
                     }
                     for existing_file in self.files:
@@ -191,14 +191,14 @@ class Tracker(threading.Thread):
                 pass
             self.lock.release()
             for file in self.files:
-                print(file.get('name'))
-                print(str(file.get('mtime')))
+                print(repr(file.items()))
                 # remind peers of file info
-                mtime = file.get('mtime')
-                conn.send('{\"' + file.get('name')
-                          + '\": {\"ip\":' + file.get('ip')
-                          + '\"port\":,' + self.port
-                          + '\"mtime\":,' + mtime + '}')
+                format_string = '{\"%s\": {\"ip\":%s,\"port\":%s,\"mtime\":%s}}'
+                message = format_string % (
+                    file.get('name'), repr(file.get('ip')),
+                    repr(file.get('port')), repr(file.get('mtime')))
+                conn.send(str.encode(message))
+                print('sent message!')
         conn.close()    # Closes
 
 
